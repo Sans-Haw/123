@@ -196,10 +196,6 @@ wss.on('connection', ws => {
       }));
     }
 
-    if (msg.type === 'group-file') {
-      handleGroupFileMessage(msg, nick);
-    }
-
     if (msg.type === 'history') {
       const key = [nick, msg.peer].sort().join('|');
       ws.send(JSON.stringify({ type: 'history', peer: msg.peer, history: chats[key] || [] }));

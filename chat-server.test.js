@@ -1,15 +1,16 @@
 const { test, beforeEach, after } = require('node:test');
 const assert = require('node:assert');
+const { EventEmitter } = require('node:events');
 const { handleGroupFileMessage, wss, groups, chats, peers, broadcastInterval } = require('./chat-server');
 
 function createMockSocket() {
-  return {
-    sent: [],
-    readyState: 1,
-    send(data) {
-      this.sent.push(data);
-    }
+  const sock = new EventEmitter();
+  sock.sent = [];
+  sock.readyState = 1;
+  sock.send = function (data) {
+    this.sent.push(data);
   };
+  return sock;
 }
 
 beforeEach(() => {
@@ -50,4 +51,30 @@ test('handleGroupFileMessage broadcasts to each member once', () => {
 
   assert.strictEqual(wsA1.sent.length + wsA2.sent.length, 1);
   assert.strictEqual(wsB.sent.length, 1);
+});
+
+test('server handles group-file messages once', () => {
+  groups.g = { members: ['alice', 'bob'] };
+  const wsAlice = createMockSocket();
+  const wsBob = createMockSocket();
+
+  wss.emit('connection', wsAlice);
+  wss.emit('connection', wsBob);
+
+  wsAlice.emit('message', JSON.stringify({ type: 'join', nick: 'alice' }));
+  wsBob.emit('message', JSON.stringify({ type: 'join', nick: 'bob' }));
+
+  wsAlice.emit('message', JSON.stringify({
+    type: 'group-file',
+    groupName: 'g',
+    name: 'file.txt',
+    mime: 'text/plain',
+    data: 'payload'
+  }));
+
+  const aliceFiles = wsAlice.sent.filter(m => JSON.parse(m).type === 'group-file');
+  const bobFiles = wsBob.sent.filter(m => JSON.parse(m).type === 'group-file');
+
+  assert.strictEqual(aliceFiles.length, 1);
+  assert.strictEqual(bobFiles.length, 1);
 });
