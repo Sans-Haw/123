@@ -678,6 +678,7 @@ async function loadGroups() {
   // ── mini‑chat client ─────────────────────────────────────────
   let ws = null;
   let myNick = null;
+  const pendingFileIds = new Set();
 
   function receiveFile({ from, name, mime, data }) {
     const box = document.getElementById('chatBox');
@@ -768,9 +769,11 @@ async function loadGroups() {
     }
 
     if (data.type === 'group-file' && data.groupName === currentGroup) {
-      if (data.from === myNick) return; // игнорируем собственные файлы
-      console.log('Получен файл от:', data.from, data.name);
-      receiveFile(data);
+      if (data.fileId && pendingFileIds.has(data.fileId)) {
+        pendingFileIds.delete(data.fileId);
+      } else {
+        receiveFile(data);
+      }
     }
 
     if (data.type === 'file') receiveFile(data);
@@ -909,13 +912,16 @@ async function loadGroups() {
     const reader = new FileReader();
 
     reader.onload = function() {
+      const fileId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
       const payload = {
+        fileId,
         name: file.name,
         mime: file.type,
         data: reader.result.split(',')[1]
       };
 
       if (currentGroup) {
+        pendingFileIds.add(fileId);
         ws.send(JSON.stringify({
           type: "group-file",
           groupName: currentGroup,
