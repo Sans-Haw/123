@@ -65,6 +65,41 @@ function sendHistory(ws, nick) {
   });
 }
 
+function handleGroupFileMessage({ groupName, name, mime, data }, nick) {
+  if (!groups[groupName]) return;
+
+  if (!chats[groupName]) chats[groupName] = [];
+
+  const isDuplicate = chats[groupName].some(item =>
+    item.file &&
+    item.file.name === name &&
+    item.file.mime === mime &&
+    item.file.data === data &&
+    item.from === nick
+  );
+
+  if (!isDuplicate) {
+    chats[groupName].push({ from: nick, file: { name, mime, data } });
+    saveChats();
+  }
+
+  const sentTo = new Set();
+
+  peers.forEach((peerNick, sock) => {
+    if (groups[groupName].members.includes(peerNick) && sock.readyState === 1 && !sentTo.has(peerNick)) {
+      sock.send(JSON.stringify({
+        type: 'group-file',
+        groupName,
+        from: nick,
+        name,
+        mime,
+        data
+      }));
+      sentTo.add(peerNick);
+    }
+  });
+}
+
 // ░░ ЛОГИКА ░░
 wss.on('connection', ws => {
   let nick = null;
@@ -138,36 +173,7 @@ wss.on('connection', ws => {
     }
 
     if (msg.type === 'group-file') {
-      const { groupName, name, mime, data } = msg;
-      if (!groups[groupName]) return;
-
-      if (!chats[groupName]) chats[groupName] = [];
-
-      // Проверка на дубликат файла от того же пользователя с тем же содержимым
-      const isDuplicate = chats[groupName].some(item => 
-        item.file && 
-        item.file.name === name &&
-        item.file.mime === mime &&
-        item.file.data === data &&
-        item.from === nick
-      );
-
-      if (!isDuplicate) {
-        chats[groupName].push({ from: nick, file: { name, mime, data } });
-        saveChats();
-      }
-
-      // Рассылка файла всем участникам, включая отправителя
-      peers.forEach((peerNick, sock) => {
-        if (groups[groupName].members.includes(peerNick) && sock.readyState === 1) {
-          sock.send(JSON.stringify({ 
-            type: 'group-file', 
-            groupName, 
-            from: nick, 
-            name, mime, data 
-          }));
-        }
-      });
+      handleGroupFileMessage(msg, nick);
     }
 
 
@@ -191,33 +197,7 @@ wss.on('connection', ws => {
     }
 
     if (msg.type === 'group-file') {
-      const { groupName, name, mime, data } = msg;
-      if (!groups[groupName]) return;
-
-      if (!chats[groupName]) chats[groupName] = [];
-
-      const isDuplicate = chats[groupName].some(item => 
-        item.file && item.file.name === name && item.file.mime === mime && item.file.data === data && item.from === nick);
-
-      if (!isDuplicate) {
-        chats[groupName].push({ from: nick, file: { name, mime, data } });
-        saveChats();
-      }
-
-      // Отправляем файл ровно один раз на каждое имя участника, независимо от числа соединений
-      const sentTo = new Set();
-
-      peers.forEach((peerNick, sock) => {
-        if (groups[groupName].members.includes(peerNick) && sock.readyState === 1 && !sentTo.has(peerNick)) {
-          sock.send(JSON.stringify({ 
-            type: 'group-file', 
-            groupName, 
-            from: nick, 
-            name, mime, data 
-          }));
-          sentTo.add(peerNick);
-        }
-      });
+      handleGroupFileMessage(msg, nick);
     }
 
     if (msg.type === 'history') {
@@ -233,6 +213,8 @@ wss.on('connection', ws => {
 });
 
 // периодический «пинг» списка
-setInterval(broadcastUsers, 5000);
+const broadcastInterval = setInterval(broadcastUsers, 5000);
 
 console.log(`▶ mini‑chat server started on ws://localhost:${PORT}`);
+
+module.exports = { wss, handleGroupFileMessage, groups, chats, peers, broadcastInterval };
