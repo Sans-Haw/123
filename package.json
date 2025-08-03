@@ -1,0 +1,48 @@
+{
+  "name": "telegram-launcher",
+  "version": "1.1.6",
+  "description": "Telegram Launcher Portable",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.moga.telegramlauncher",
+    "icon": "icon.png",
+    "productName": "Telegram Launcher",
+    "files": [
+      "**/*"
+    ],
+    "asar": true,
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "http://103.179.44.171/"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.4.6",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "20": "^3.1.9",
+    "electron-log": "^5.4.1",
+    "electron-store": "^10.1.0",
+    "electron-updater": "^6.6.2",
+    "fs-extra": "^11.3.0",
+    "node-window-manager": "^2.2.4",
+    "ws": "^8.18.3"
+  }
+}
