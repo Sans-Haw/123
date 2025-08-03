@@ -65,7 +65,7 @@ function sendHistory(ws, nick) {
   });
 }
 
-function handleGroupFileMessage({ groupName, name, mime, data }, nick) {
+function handleGroupFileMessage({ groupName, name, mime, data, fileId }, nick) {
   if (!groups[groupName]) return;
 
   if (!chats[groupName]) chats[groupName] = [];
@@ -79,7 +79,7 @@ function handleGroupFileMessage({ groupName, name, mime, data }, nick) {
   );
 
   if (!isDuplicate) {
-    chats[groupName].push({ from: nick, file: { name, mime, data } });
+    chats[groupName].push({ from: nick, fileId, file: { name, mime, data } });
     saveChats();
   }
 
@@ -93,7 +93,8 @@ function handleGroupFileMessage({ groupName, name, mime, data }, nick) {
         from: nick,
         name,
         mime,
-        data
+        data,
+        fileId
       }));
       sentTo.add(peerNick);
     }
