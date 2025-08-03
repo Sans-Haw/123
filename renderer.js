@@ -768,6 +768,7 @@ async function loadGroups() {
     }
 
     if (data.type === 'group-file' && data.groupName === currentGroup) {
+      if (data.from === myNick) return; // игнорируем собственные файлы
       console.log('Получен файл от:', data.from, data.name);
       receiveFile(data);
     }
@@ -920,6 +921,7 @@ async function loadGroups() {
           groupName: currentGroup,
           ...payload
         }));
+        receiveFile({ from: myNick, ...payload });
       } else if (currentPeer) {
         ws.send(JSON.stringify({
           type: "file",
